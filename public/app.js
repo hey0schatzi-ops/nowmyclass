@@ -246,14 +246,23 @@ function renderStudentGrid() {
 async function openStudentModal(studentId) {
   try {
     // 상세 정보 가져오기
-    const student = await apiCall(`/student/${studentId}`);
+    const cachedStudent = gameState.students.find(s => s.id === studentId);
+    const detailStudent = await apiCall(`/student/${studentId}`);
+    const student = detailStudent && !detailStudent.error && detailStudent.id
+      ? { ...(cachedStudent || {}), ...detailStudent }
+      : cachedStudent;
+
+    if (!student || !student.id) {
+      throw new Error(detailStudent?.error || 'Student data is missing.');
+    }
     currentStudent = student;
 
     // 모달 내용 업데이트
     document.getElementById('modalStudentAvatar').innerHTML = createAvatarHTML(student);
-    document.getElementById('modalStudentName').textContent = student.name;
+    document.getElementById('modalStudentName').textContent = student.name || '이름 없음';
     document.getElementById('modalStudentNumber').textContent = `${student.number}번`;
-    document.getElementById('modalStudentGender').textContent = student.gender;
+    document.getElementById('modalStudentGender').textContent = student.gender || '-';
+    document.getElementById('modalStudentNumber').textContent = student.number ? `${student.number}번` : '-';
 
     // 역할 표시
     const roleEl = document.getElementById('modalStudentRole');
@@ -266,21 +275,21 @@ async function openStudentModal(studentId) {
     }
 
     // 통계
-    document.getElementById('modalStressBar').style.width = student.stressLevel + '%';
-    document.getElementById('modalStressValue').textContent = student.stressLevel;
-    document.getElementById('modalEsteemBar').style.width = student.selfEsteem + '%';
-    document.getElementById('modalEsteemValue').textContent = student.selfEsteem;
-    document.getElementById('modalTrustBar').style.width = student.trustInTeacher + '%';
-    document.getElementById('modalTrustValue').textContent = student.trustInTeacher;
+    document.getElementById('modalStressBar').style.width = (student.stressLevel || 0) + '%';
+    document.getElementById('modalStressValue').textContent = student.stressLevel ?? '-';
+    document.getElementById('modalEsteemBar').style.width = (student.selfEsteem || 0) + '%';
+    document.getElementById('modalEsteemValue').textContent = student.selfEsteem ?? '-';
+    document.getElementById('modalTrustBar').style.width = (student.trustInTeacher || 0) + '%';
+    document.getElementById('modalTrustValue').textContent = student.trustInTeacher ?? '-';
 
     // 프로필 정보
-    document.getElementById('modalPersonality').textContent = student.personality;
-    document.getElementById('modalHobby').textContent = student.hobby;
-    document.getElementById('modalDream').textContent = student.dream;
-    document.getElementById('modalGrade').textContent = student.schoolGrade;
-    document.getElementById('modalAppearance').textContent = student.appearance;
-    document.getElementById('modalFamily').textContent = student.familyEnvironment;
-    document.getElementById('modalSpeakingStyle').textContent = student.speakingStyle;
+    document.getElementById('modalPersonality').textContent = student.personality || '-';
+    document.getElementById('modalHobby').textContent = student.hobby || '-';
+    document.getElementById('modalDream').textContent = student.dream || '-';
+    document.getElementById('modalGrade').textContent = student.schoolGrade || '-';
+    document.getElementById('modalAppearance').textContent = student.appearance || '-';
+    document.getElementById('modalFamily').textContent = student.familyEnvironment || '-';
+    document.getElementById('modalSpeakingStyle').textContent = student.speakingStyle || '-';
     document.getElementById('modalIntroduction').textContent = student.introduction || '안녕하세요!';
 
     // 기억 업데이트

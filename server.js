@@ -1723,8 +1723,14 @@ app.post('/api/game/init', async (req, res) => {
           avatarProfile: s.avatarProfile,
           appearance: s.appearance,
           personality: s.personality,
+          traits: s.traits,
           hobby: s.hobby,
           dream: s.dream,
+          familyEnvironment: s.familyEnvironment,
+          hiddenWorry: s.hiddenWorry,
+          secret: s.secret,
+          speakingStyle: s.speakingStyle,
+          introduction: s.introduction,
           club: s.club,
           academy: s.academy,
           schoolGrade: s.schoolGrade,
@@ -1847,11 +1853,7 @@ app.post('/api/consultation', async (req, res) => {
       openRouterError: error.message,
       weeklyActionsRemaining: gameState.weeklyActionsRemaining
     });
-    responseSource = 'fallback';
-    openRouterError = error.message;
     console.error('상담 AI 호출 오류, 기본 응답으로 대체:', error);
-    logFallbackResponse('consultation', error.message);
-    response = generateEmergencyConsultationResponse(student, message);
   }
   response = ensureNonRepeatingResponse(student, message, response, buildConsultationContext(student, message));
   if (isFirstConsultation) {
