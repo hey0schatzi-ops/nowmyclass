@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우리 반은 지금 - AI 학교 시뮬레이션</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 시작 화면 -->
+  <div id="startScreen" class="screen active">
+    <div class="start-container">
+      <h1>🏫 우리 반은 지금</h1>
+      <p class="slogan">"모든 학생에게는 저마다의 이야기가 있다."</p>
+      <p class="slogan">"당신은 그 이야기를 끝까지 들어줄 수 있나요?"</p>
+      <div class="intro-text">
+        <p>3월. 당신은 ○○고등학교 2학년 5반의 새로운 담임교사가 되었습니다.</p>
+        <p>25명의 학생들이 당신을 기다리고 있습니다.</p>
+      </div>
+      <div class="intro-guide">
+        <div class="guide-item">🏫 매주 <strong>5회 행동</strong>으로 학생들과 상담하세요</div>
+        <div class="guide-item">📅 상담·이벤트·관찰로 <strong>1년(3월~12월)</strong>을 운영하세요</div>
+        <div class="guide-item">💚 학생의 스트레스·자존감·신뢰도를 챙기세요</div>
+        <div class="guide-item">📔 매주 자동 작성되는 교무수첩으로 반을 돌아보세요</div>
+      </div>
+      <button id="startGameBtn" class="btn btn-primary btn-large">
+        새 학기 시작하기
+      </button>
+      <div id="loadingMessage" class="loading" style="display: none;">
+        <div class="spinner"></div>
+        <p>학생들을 생성하고 있습니다...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 게임 메인 화면 -->
+  <div id="gameScreen" class="screen">
+    <!-- 상단 헤더 -->
+    <header class="game-header">
+      <div class="header-left">
+        <h1>🏫 우리 반은 지금</h1>
+      </div>
+      <div class="header-center">
+        <div class="date-display">
+          <span id="currentMonth">3</span>월 <span id="currentWeek">1</span>주차
+        </div>
+        <div class="action-points">
+          남은 행동: <span id="actionPoints">5</span>회
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="helpBtn" class="btn btn-secondary">📖 게임 방법</button>
+        <button id="teacherNoteBtn" class="btn btn-secondary">📔 교무수첩</button>
+      </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <div class="game-content">
+      <!-- 학급 개요 패널 -->
+      <aside class="class-overview">
+        <div class="panel">
+          <h3>📊 학급 현황</h3>
+          <div class="stat-item">
+            <span class="stat-label">학급 분위기</span>
+            <div class="progress-bar">
+              <div id="classAtmosphereBar" class="progress-fill" style="width: 50%"></div>
+            </div>
+            <span id="classAtmosphereValue" class="stat-value">50</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">평균 스트레스</span>
+            <div class="progress-bar stress">
+              <div id="avgStressBar" class="progress-fill" style="width: 50%"></div>
+            </div>
+            <span id="avgStressValue" class="stat-value">50</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">평균 신뢰도</span>
+            <div class="progress-bar trust">
+              <div id="avgTrustBar" class="progress-fill" style="width: 50%"></div>
+            </div>
+            <span id="avgTrustValue" class="stat-value">50</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>📅 이번 주 이벤트</h3>
+          <div id="weeklyEvent" class="event-container">
+            <p class="no-event">특별한 이벤트가 없습니다.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>📮 익명 제보함</h3>
+          <div id="reportsList" class="reports-list">
+            <p class="no-reports">아직 도착한 제보가 없습니다.</p>
+          </div>
+        </div>
+
+        <button id="nextWeekBtn" class="btn btn-primary btn-block">다음 주로 진행</button>
+      </aside>
+
+      <!-- 학생 목록 -->
+      <main class="student-area">
+        <div class="panel">
+          <h3>👥 학생 명단</h3>
+          <div class="student-grid" id="studentGrid">
+            <!-- 학생들이 여기에 동적으로 추가됨 -->
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 학생 상세 모달 -->
+  <div id="studentModal" class="modal">
+    <div class="modal-content student-detail-modal">
+      <button class="modal-close" id="closeStudentModal">&times;</button>
+      <div class="student-detail">
+        <div class="student-header">
+          <div class="student-avatar" id="modalStudentAvatar">👤</div>
+          <div class="student-basic-info">
+            <h2 id="modalStudentName">학생 이름</h2>
+            <p id="modalStudentNumber">번호</p>
+            <p id="modalStudentGender">성별</p>
+            <p id="modalStudentRole" class="student-role"></p>
+          </div>
+        </div>
+        
+        <div class="student-stats">
+          <div class="stat-item">
+            <span class="stat-label">스트레스</span>
+            <div class="progress-bar stress">
+              <div id="modalStressBar" class="progress-fill" style="width: 50%"></div>
+            </div>
+            <span id="modalStressValue" class="stat-value">50</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">자존감</span>
+            <div class="progress-bar esteem">
+              <div id="modalEsteemBar" class="progress-fill" style="width: 50%"></div>
+            </div>
+            <span id="modalEsteemValue" class="stat-value">50</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">신뢰도</span>
+            <div class="progress-bar trust">
+              <div id="modalTrustBar" class="progress-fill" style="width: 50%"></div>
+            </div>
+            <span id="modalTrustValue" class="stat-value">50</span>
+          </div>
+        </div>
+
+        <div class="student-info-tabs">
+          <button class="tab-btn active" data-tab="profile">프로필</button>
+          <button class="tab-btn" data-tab="consult">상담</button>
+          <button class="tab-btn" data-tab="memories">기억</button>
+        </div>
+
+        <div class="tab-content active" id="profileTab">
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">성격</span>
+              <span id="modalPersonality" class="info-value">-</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">취미</span>
+              <span id="modalHobby" class="info-value">-</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">장래희망</span>
+              <span id="modalDream" class="info-value">-</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">성적</span>
+              <span id="modalGrade" class="info-value">-</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">외모</span>
+              <span id="modalAppearance" class="info-value">-</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">가정환경</span>
+              <span id="modalFamily" class="info-value">-</span>
+            </div>
+            <div class="info-item full-width">
+              <span class="info-label">말투</span>
+              <span id="modalSpeakingStyle" class="info-value">-</span>
+            </div>
+            <div class="info-item full-width">
+              <span class="info-label">자기소개</span>
+              <p id="modalIntroduction" class="info-text">-</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="consultTab">
+          <div class="consultation-area">
+            <div id="consultationMessages" class="chat-messages">
+              <p class="consultation-hint">상담을 시작하려면 메시지를 입력하세요.</p>
+            </div>
+            <form id="consultationForm" class="chat-form">
+              <input type="text" id="consultationInput" placeholder="학생에게 할 말을 입력하세요..." autocomplete="off">
+              <button type="submit" class="btn btn-primary">상담하기</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="tab-content" id="memoriesTab">
+          <div id="studentMemories" class="memories-list">
+            <p class="no-memories">아직 기록된 기억이 없습니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 교무수첩 모달 -->
+  <div id="teacherNoteModal" class="modal">
+    <div class="modal-content notebook-modal">
+      <button class="modal-close" id="closeNoteModal">&times;</button>
+      <h2>📔 교무수첩</h2>
+      <div id="teacherNotesList" class="notes-list">
+        <p class="no-notes">아직 작성된 교무수첩이 없습니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 도움말 모달 -->
+  <div id="helpModal" class="modal">
+    <div class="modal-content help-modal">
+      <button class="modal-close" id="closeHelpModal">&times;</button>
+      <h2>📖 게임 방법</h2>
+      <div class="help-content">
+        <section>
+          <h3>🎯 목표</h3>
+          <p>3월부터 12월까지 1년간 담임을 맡아, 학생들의 스트레스는 낮추고 자존감·신뢰도를 높여 학급 분위기를 최고로 끌어올리세요. 1년이 지나면 엔딩과 학생 편지가 도착합니다.</p>
+        </section>
+        <section>
+          <h3>🔁 한 주의 흐름</h3>
+          <ol>
+            <li><strong>학생 상담</strong>: 학생을 클릭 → 상담 탭 → 메시지 입력. <strong>학생 1명당 1 행동력</strong> 소모 (이후 같은 주 추가 메시지는 무료).</li>
+            <li><strong>행동력</strong>: 매주 5회. 행동력이 남아있어도 "다음 주"로 진행 가능(남은 행동은 사라짐).</li>
+            <li><strong>다음 주 진행</strong>: 버튼을 누르면 주가 바뀌고, 행동력·상담 플래그가 초기화됩니다.</li>
+            <li><strong>이벤트</strong>: 일부 주차에 랜덤 이벤트가 발생해 선택지가 주어집니다.</li>
+            <li><strong>교무수첩</strong>: 매주 자동으로 작성되어 반 상태와 소감을 기록합니다.</li>
+          </ol>
+        </section>
+        <section>
+          <h3>💡 운영 팁</h3>
+          <ul>
+            <li>스트레스가 높은(🔴) 학생부터 우선 상담하세요.</li>
+            <li>신뢰도가 쌓이면 고민/비밀이 더 잘 드러납니다.</li>
+            <li>한 학생과 여러 번 상담하면 기억이 쌓여 관계가 깊어집니다.</li>
+            <li>행동력이 0이면 이벤트만 보거나 다음 주로 진행하면 됩니다.</li>
+          </ul>
+        </section>
+        <section>
+          <h3>📊 지표</h3>
+          <ul>
+            <li><strong>스트레스</strong>: 낮을수록 좋음</li>
+            <li><strong>자존감</strong>: 높을수록 좋음</li>
+            <li><strong>신뢰도</strong>: 선생님에 대한 신뢰. 상담으로 오름</li>
+            <li><strong>학급 분위기</strong>: 위 세 지표의 종합. 엔딩 등급에 영향</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- 이벤트 모달 -->
+  <div id="eventModal" class="modal">
+    <div class="modal-content event-modal">
+      <h2 id="eventTitle">이벤트 제목</h2>
+      <p id="eventDescription">이벤트 설명</p>
+      <div id="eventChoices" class="event-choices">
+        <!-- 선택지들이 여기에 추가됨 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 엔딩 모달 -->
+  <div id="endingModal" class="modal">
+    <div class="modal-content ending-modal">
+      <h1 id="endingTitle">엔딩</h1>
+      <h2 id="endingType">엔딩 타입</h2>
+      <p id="endingDescription">엔딩 설명</p>
+      <div id="studentLetters" class="letters-container">
+        <!-- 학생 편지들 -->
+      </div>
+      <button id="restartGameBtn" class="btn btn-primary btn-large">새 게임 시작</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
