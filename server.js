@@ -2,9 +2,52 @@ require('dotenv').config();
 const express = require('express');
 const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 const path = require('path');
+const { Redis } = require('@upstash/redis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ===== Upstash Redis 설정 (서버리스 환경에서 게임 상태 영속화) =====
+let redis = null;
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+  console.log('[REDIS] Upstash Redis 연결됨');
+} else {
+  console.log('[REDIS] Upstash 환경변수 없음 - 인메모리 폴백 사용 (로컬 개발용)');
+}
+
+// 로컬 개발용 인메모리 저장소 (Redis 없을 때)
+const memoryStore = new Map();
+
+async function loadGameState(sessionId) {
+  try {
+    if (redis) {
+      const data = await redis.get(`game:${sessionId}`);
+      if (data) return typeof data === 'string' ? JSON.parse(data) : data;
+      return null;
+    } else {
+      return memoryStore.get(`game:${sessionId}`) || null;
+    }
+  } catch (error) {
+    console.error('[REDIS LOAD ERROR]', error.message);
+    return null;
+  }
+}
+
+async function saveGameState(sessionId, state) {
+  try {
+    if (redis) {
+      await redis.set(`game:${sessionId}`, JSON.stringify(state));
+    } else {
+      memoryStore.set(`game:${sessionId}`, state);
+    }
+  } catch (error) {
+    console.error('[REDIS SAVE ERROR]', error.message);
+  }
+}
 
 app.use(express.json());
 app.use((req, res, next) => {
@@ -13,8 +56,8 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 게임 상태 저장 (실제로는 DB를 사용해야 함)
-let gameState = {
+// 게임 상태 기본값
+const DEFAULT_GAME_STATE = {
   currentWeek: 1,
   currentMonth: 3,
   year: 2024,
@@ -29,6 +72,51 @@ let gameState = {
   weeklyActionsRemaining: 5,
   nextReportWeek: 3
 };
+
+// 현재 요청의 게임 상태 (세션 미들웨어에서 설정)
+let gameState = { ...DEFAULT_GAME_STATE };
+
+// ===== 세션 미들웨어: 요청마다 Redis에서 gameState 로드, 응답 시 저장 =====
+app.use(async (req, res, next) => {
+  // /api/* 경로만 세션 처리
+  if (!req.path.startsWith('/api/') && !req.path.startsWith('/api')) {
+    return next();
+  }
+
+  const sessionId = req.headers['x-game-session'];
+  req.gameSessionId = sessionId || null;
+
+  // 응답 전 gameState 저장을 위해 res.json 래핑
+  const originalJson = res.json.bind(res);
+  res.json = function (data) {
+    // 세션 ID가 있고 gameState가 로드/수정되었으면 저장
+    if (req.gameSessionId && req.stateLoaded) {
+      saveGameState(req.gameSessionId, gameState).catch(err =>
+        console.error('[REDIS SAVE ERROR in res.json]', err.message)
+      );
+    }
+    return originalJson(data);
+  };
+
+  // 세션 ID가 있으면 Redis에서 로드
+  if (sessionId) {
+    const loaded = await loadGameState(sessionId);
+    if (loaded) {
+      gameState = loaded;
+      req.stateLoaded = true;
+    } else {
+      // 세션은 있지만 데이터 없음 → init 전이거나 신규 → 기본값 유지
+      gameState = { ...DEFAULT_GAME_STATE };
+      req.stateLoaded = true;
+    }
+  } else {
+    // 세션 ID 없음 (init 직전 등) → 기본값
+    gameState = { ...DEFAULT_GAME_STATE };
+    req.stateLoaded = false;
+  }
+
+  next();
+});
 
 // 학생 이름 풀
 const lastNames = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황', '안', '송', '류', '전'];
@@ -92,16 +180,21 @@ async function callOpenRouter(messages, temperature = 0.8) {
       max_tokens: 1000,
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'http://localhost:3000',
+        'HTTP-Referer': process.env.HTTP_REFERER || 'http://localhost:3000',
         'X-OpenRouter-Title': 'Our Class Now - AI School Simulation',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     console.log('STATUS:', response.status);
     console.log('[OPENROUTER STATUS]', response.status);
 

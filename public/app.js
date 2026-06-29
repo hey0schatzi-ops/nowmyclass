@@ -3,6 +3,16 @@ let gameState = null;
 let currentStudent = null;
 let consultationHistory = [];
 
+// 게임 세션 ID (localStorage에서 로드, 없으면 새로 생성)
+function getGameSessionId() {
+  let sessionId = localStorage.getItem('gameSessionId');
+  if (!sessionId) {
+    sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
+    localStorage.setItem('gameSessionId', sessionId);
+  }
+  return sessionId;
+}
+
 // DOM 요소들
 const startScreen = document.getElementById('startScreen');
 const gameScreen = document.getElementById('gameScreen');
@@ -69,6 +79,7 @@ async function apiCall(endpoint, method = 'GET', data = null) {
     method,
     headers: {
       'Content-Type': 'application/json',
+      'X-Game-Session': getGameSessionId(),
     },
   };
 
@@ -82,9 +93,14 @@ async function apiCall(endpoint, method = 'GET', data = null) {
 }
 
 // 게임 시작
-startGameBtn.addEventListener('click', async () => {
+async function startGame() {
   startGameBtn.style.display = 'none';
+  const startGameBtn2 = document.getElementById('startGameBtn2');
+  if (startGameBtn2) startGameBtn2.style.display = 'none';
   loadingMessage.style.display = 'block';
+
+  // 새 게임 시작 시 기존 세션 ID 제거 → 새 세션 생성
+  localStorage.removeItem('gameSessionId');
 
   try {
     const result = await apiCall('/game/init', 'POST');
@@ -97,13 +113,25 @@ startGameBtn.addEventListener('click', async () => {
     } else {
       alert('게임 초기화 실패: ' + result.error);
       startGameBtn.style.display = 'block';
+      if (startGameBtn2) startGameBtn2.style.display = '';
       loadingMessage.style.display = 'none';
     }
   } catch (error) {
     console.error('게임 시작 오류:', error);
     alert('서버 연결 실패');
     startGameBtn.style.display = 'block';
+    if (startGameBtn2) startGameBtn2.style.display = '';
     loadingMessage.style.display = 'none';
+  }
+}
+
+startGameBtn.addEventListener('click', startGame);
+
+// 랜딩 페이지 보조 CTA
+document.addEventListener('DOMContentLoaded', () => {
+  const startGameBtn2 = document.getElementById('startGameBtn2');
+  if (startGameBtn2) {
+    startGameBtn2.addEventListener('click', startGame);
   }
 });
 
@@ -679,6 +707,8 @@ document.getElementById('restartGameBtn').addEventListener('click', () => {
   gameScreen.classList.remove('active');
   startScreen.classList.add('active');
   startGameBtn.style.display = 'block';
+  const startGameBtn2 = document.getElementById('startGameBtn2');
+  if (startGameBtn2) startGameBtn2.style.display = '';
   loadingMessage.style.display = 'none';
   gameState = null;
 });
